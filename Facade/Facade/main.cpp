@@ -1,43 +1,51 @@
 #include <CommonCrypto/CommonCrypto.h>
 #include <iostream>
 #include <sstream>
+#include <vector>
+
 
 class AESEncrypt {
 
 public:
-    std::string getEncrypt(const char data[],const char key[], const char iv[]) {
-    
-        size_t keyLength = sizeof(&key)/sizeof(char);
-        size_t dataLength = sizeof(&data)/sizeof(char);
-        unsigned char buffer[1024];
+    std::string getEncrypt(const std::string data,const std::string key, const std::string iv) {
+        std::vector<uint8_t> datav(data.begin(), data.end());
+        const uint8_t* d = &datav[0];
+        
+        std::vector<uint8_t> ivv(iv.begin(), iv.end());
+        const uint8_t* i = &ivv[0];
+        
+        std::vector<uint8_t> keyv(key.begin(), key.end());
+        const uint8_t* k = &keyv[0];
+        
+        size_t dataLength = datav.size();
+        size_t bufferSize = dataLength + kCCBlockSizeDES;
+        uint8_t buffer[bufferSize];
         size_t numBytesEncrypted = 0;
 
-        std::cout << keyLength <<std::endl;
-        std::cout << dataLength << std::endl;
         
-        //FIXME: parameter err need reference
         CCCryptorStatus cryptorStatus = CCCrypt(
                                 kCCEncrypt,
-                                kCCAlgorithmAES,
-                                kCCOptionECBMode,
-                                &key,
-                                keyLength,
-                                &iv,
-                                &data,
-                                dataLength,
-                                &buffer,
-                                1024,
+                                kCCAlgorithmDES,
+                                kCCOptionPKCS7Padding,
+                                k,
+                                key.size(),
+                                i,
+                                d,
+                                data.size(),
+                                (void *)buffer,
+                                bufferSize,
                                 &numBytesEncrypted);
 
         if (cryptorStatus == kCCSuccess) {
             std::string ret;
             std::stringstream ss;
             for(int i = 0 ; i < numBytesEncrypted; ++i) {
-                ss << buffer[i];
+                ss << std::hex << (int)buffer[i];
             }
+            std::cout << "encrypted: " << ss.str() << std::endl;
             return ss.str();
         } else {
-            std::cout << cryptorStatus << std::endl;
+            std::cout << "err: "<<cryptorStatus << std::endl;
         }
         return "";
     }
@@ -76,12 +84,12 @@ public:
         return m.getDigest(str);
     }
     
-    std::string getEncryptDataAndDigest(const char data[],const char key[], const char iv[]) {
+    std::string getEncryptDataAndDigest(const std::string data,const std::string key, const std::string iv) {
         AESEncrypt a;
         return a.getEncrypt(data, key, iv);
     }
     
-    std::string getCiperAndDigest(const char data[],const char key[], const char iv[]) {
+    std::string getCiperAndDigest(const std::string data,const std::string key, const std::string iv) {
         std::string tmp = getEncryptDataAndDigest(data, key, iv);
         return tmp.append(getDigest(tmp.c_str()));
     
@@ -90,7 +98,7 @@ public:
 
 int main(int argc, const char * argv[]) {
     Facade f;
-    std::string result = f.getCiperAndDigest("Hello", "world", NULL);
+    std::string result = f.getCiperAndDigest("Hello hh", "world hh", "ivvv");
     std::cout << result << std::endl;
     return 0;
 }
